@@ -1,38 +1,81 @@
-# News Agent 1.0
+# News Agent 1.1
 
-Daily news briefing agent with a two-pass pipeline — Haiku gathers and filters headlines, Sonnet ranks and writes summaries. Runs entirely in the browser with no backend.
+Terminal-based daily news briefing pipeline. Searches headlines via the Anthropic API, filters for quality, ranks by global importance, and writes a Markdown briefing to your Obsidian vault.
 
 ## How it works
 
-| Pass | Model | What it does |
-|------|-------|---------------|
-| Pass 1 | Haiku + web search | Searches for the most recent headlines across your chosen topics |
-| Filter | Haiku | Scores items for quality, drops clickbait, listicles, and off-topic noise |
+| Stage | Model | What it does |
+|-------|-------|---------------|
+| Pass 1 | Haiku + web search | Searches one API call per topic for the most recent headlines |
+| Filter | Haiku | Drops clickbait, listicles, off-topic, and low-quality items |
 | Pass 2 | Sonnet | Ranks by global importance and writes concise summaries |
+
+Each topic is cached independently for 6 hours — adding a topic only searches the new one.
+
+## Setup
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-…"
+```
+
+Optional — set a custom Obsidian path:
+
+```bash
+export NEWS_AGENT_PATH="/path/to/your/vault/sync/Market/News"
+```
 
 ## Usage
 
-1. Get an API key from [console.anthropic.com](https://console.anthropic.com)
-2. Open `news-agent.html` in a browser
-3. Paste your key, pick topics, set sliders, and run
-
-Your key never leaves the browser — all API calls go directly to `api.anthropic.com`.
+```bash
+node news-agent.js           # Full run → writes MM-DD-YYYY HH.MM.SS.md
+node news-agent.js --dry-run # Print to stdout, don't write a file
+node news-agent.js --clear-cache  # Clear the per-topic cache
+```
 
 ## Configuration
 
-- **Topics:** AI & tech, World affairs, Science, Business, Politics, Climate (up to 4)
-- **Stories per topic:** 1–5
-- **Summary length:** 1–4 sentences
+Edit `News Agent Config.md` in your Obsidian vault:
+
+```yaml
+---
+topics:
+  - AI & tech
+  - World affairs
+  - Business
+stories_per_topic: 3
+summary_length: 2
+---
+```
+
+### Available topics
+
+`AI & tech`, `World affairs`, `Science`, `Business`, `Politics`, `Climate` (up to 4)
+
+### Settings
+
+- **stories_per_topic:** 1–5
+- **summary_length:** 1–4 sentences
 
 ## Cache
 
-Results from Pass 1 are cached in localStorage for 6 hours. Changing topics or story count invalidates the cache for that combination. A cache hit skips the search call entirely, saving both time and tokens.
+Per-topic results are cached in `.news-cache.json` alongside your config. TTL is 6 hours. Cache hits skip the API call entirely — you only pay for topics you add or that have expired.
 
-## Obsidian integration
+## Output
 
-The `news agent.md` file documents how the pipeline integrates with Obsidian — config via frontmatter, per-topic JSON cache, and markdown output files auto-saved to your vault.
+Each run writes a timestamped Markdown file to your Obsidian News folder:
+
+```
+sync/Market/News/
+  News Agent Config.md    ← your config
+  .news-cache.json        ← per-topic cache
+  05-27-2026 10.32.32.md  ← briefing output
+```
 
 ## Models
 
 - **Haiku:** `claude-haiku-4-5-20251001`
 - **Sonnet:** `claude-sonnet-4-20250514`
+
+## v1.0 → v1.1
+
+v1.0 was a browser-based HTML app. v1.1 moves to the terminal — config lives in Obsidian frontmatter, cache is per-topic (not per config-combo), and output is written directly into the vault as Markdown.
